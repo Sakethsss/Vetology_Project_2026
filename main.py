@@ -185,6 +185,48 @@ def label_reports_from_excel(
 
     return df
 
+#Confusion matrix
+def generate_confusion_matrix(llm_file: Path, gold_file: Path, diseases):
+  
+    llm_df = pd.read_excel(llm_file)
+    gold_df = pd.read_excel(gold_file)
+
+    results = []
+
+    for disease in diseases:
+
+        if disease not in llm_df.columns or disease not in gold_df.columns:
+            print(f"⚠️ Skipping {disease} (column missing)")
+            continue
+
+        # Convert labels to binary
+        llm_labels = llm_df[disease].astype(str).str.strip().str.lower()
+        gold_labels = gold_df[disease].astype(str).str.strip().str.lower()
+
+        llm_binary = llm_labels.map(lambda x: 1 if x == "abnormal" else 0)
+        gold_binary = gold_labels.map(lambda x: 1 if x == "abnormal" else 0)
+
+        TP = ((gold_binary == 1) & (llm_binary == 1)).sum()
+        TN = ((gold_binary == 0) & (llm_binary == 0)).sum()
+        FP = ((gold_binary == 0) & (llm_binary == 1)).sum()
+        FN = ((gold_binary == 1) & (llm_binary == 0)).sum()
+
+        sensitivity = TP / (TP + FN) if (TP + FN) > 0 else 0
+        specificity = TN / (TN + FP) if (TN + FP) > 0 else 0
+
+        results.append({
+            "Condition": disease,
+            "True Positive": TP,
+            "False Negative": FN,
+            "True Negative": TN,
+            "False Positive": FP,
+            "Sensitivity": round(sensitivity * 100, 2),
+            "Specificity": round(specificity * 100, 2),
+            "Total Cases": len(llm_df)
+        })
+
+    return pd.DataFrame(results)
+
 #main fn
 def main():
     print("Initializing Gemini...")
@@ -207,6 +249,22 @@ def main():
 
     print(f"\n✅ LLM labeling complete")
     print(f"📄 Output saved to: {output_path}")
+
+      # Ask for gold standard file
+    gold_file = get_excel_file_path(
+        "Enter path to GOLD STANDARD Excel file: "
+    )
+
+    confusion_df = generate_confusion_matrix(
+        llm_file=output_path,
+        gold_file=gold_file,
+        diseases=DISEASES
+    )
+
+    confusion_output = input_file.parent / "confusion_matrix_output.xlsx"
+    confusion_df.to_excel(confusion_output, index=False)
+
+    print(f"\n📊 Confusion matrix saved to: {confusion_output}")
 
 
 if __name__ == "__main__":
