@@ -1,0 +1,6 @@
+google-generativeai
+openpyxl
+pandas
+python-dotenv
+numpy
+argparse

@@ -1,0 +1,213 @@
+import argparse
+import sys
+import os
+import json
+import time
+import google.generativeai as genai
+from pathlib import Path
+from dotenv import load_dotenv
+import pandas as pd
+
+BATCH_SIZE = 5  # safe starting point
+
+#gemini call
+def init_gemini_model(model_name: str = "gemini-2.5-flash-lite"):
+
+    load_dotenv()
+
+    api_key = os.getenv("GEMINI_API_KEY")
+    if not api_key:
+        raise RuntimeError(
+            "GEMINI_API_KEY not found."
+        )
+
+    genai.configure(api_key=api_key)
+    return genai.GenerativeModel(model_name)
+
+#readfilepath CLi
+def get_excel_file_path(prompt: str = "Enter path to Excel file: ") -> Path:
+    
+    while True:
+        user_input = input(prompt).strip().strip('"').strip("'")
+        path = Path(user_input)
+
+        if not path.exists():
+            print("File does not exist. Try again.")
+            continue
+
+        if path.suffix not in [".xlsx", ".xls"]:
+            print("File must be an Excel file (.xlsx or .xls).")
+            continue
+
+        return path
+
+#diseases
+DISEASES = [
+    "perihilar_infiltrate",
+    "pneumonia",
+    "bronchitis",
+    "interstitial",
+    "diseased_lungs",
+    "hypo_plastic_trachea",
+    "cardiomegaly",
+    "pulmonary_nodules",
+    "pleural_effusion",
+    "rtm",
+    "focal_caudodorsal_lung",
+    "focal_perihilar",
+    "pulmonary_hypoinflation",
+    "right_sided_cardiomegaly",
+    "pericardial_effusion",
+    "bronchiectasis",
+    "pulmonary_vessel_enlargement",
+    "left_sided_cardiomegaly",
+    "thoracic_lymphadenopathy",
+    "esophagitis"
+]
+
+#Prompt
+def build_batch_labeling_prompt(reports, diseases):
+    disease_list = "\n".join(f"- {d}" for d in diseases)
+
+    report_blocks = []
+    for i, rpt in enumerate(reports, start=1):
+        report_blocks.append(f"""
+### Report {i}
+
+Findings:
+{rpt['findings'] or "No findings provided."}
+
+Conclusion:
+{rpt['conclusion'] or "No conclusion provided."}
+
+Recommendation:
+{rpt['recommendation'] or "No recommendation provided."}
+""")
+
+    reports_text = "\n".join(report_blocks)
+
+    prompt = f"""You are a veterinary radiology expert.
+
+You will be given MULTIPLE radiology reports.
+For EACH report, classify each disease as "Normal" or "Abnormal".
+
+## Diseases to Evaluate:
+{disease_list}
+
+## Radiology Reports:
+{reports_text}
+
+## Instructions:
+1. For each disease/structure in the list above, determine if it is "Normal" or "Abnormal".
+2. "Abnormal" means the report indicates any pathology, disease, or abnormal finding related to that structure.
+3. "Normal" means the report indicates no abnormalities or the structure appears normal.
+4. If a disease is not mentioned, infer from the overall context. If truly not assessable, mark as "Normal".
+5. Return ONLY a valid JSON object with disease names as keys and "Normal" or "Abnormal" as values.
+
+## Output Format:
+Return a JSON ARRAY with one object per report, in the SAME ORDER:
+
+[
+  {{
+    "perihilar_infiltrate": "Normal",
+    "pneumonia": "Abnormal",
+    ...
+  }},
+  {{
+    ...
+  }}
+]
+
+NO markdown. NO explanations. ONLY raw JSON.
+"""
+
+    return prompt
+
+
+#gemini call
+def call_gemini_batch(model, prompt):
+    response = model.generate_content(
+        prompt,
+        generation_config={
+            "temperature": 0.1,
+            "max_output_tokens": 4096
+        }
+    )
+
+    text = response.text.strip()
+
+    if text.startswith("```"):
+        text = text.replace("```json", "").replace("```", "").strip()
+
+    return json.loads(text)
+
+#labelling fn
+def label_reports_from_excel(
+    excel_path: Path,
+    model,
+    diseases,
+    batch_size=BATCH_SIZE
+):
+    df = pd.read_excel(excel_path)
+
+    print(f"\nLabeling {len(df)} reports in batches of {batch_size}...\n")
+
+    for start in range(0, len(df), batch_size):
+        end = min(start + batch_size, len(df))
+        batch_df = df.iloc[start:end]
+
+        reports = []
+        for _, row in batch_df.iterrows():
+            findings = "" if pd.isna(row["Findings (original radiologist report)"]) else str(row["Findings (original radiologist report)"])
+            conclusion = "" if pd.isna(row["Conclusions (original radiologist report)"]) else str(row["Conclusions (original radiologist report)"])
+            recommendation = "" if pd.isna(row["Recommendations (original radiologist report)"]) else str(row["Recommendations (original radiologist report)"])
+
+            reports.append({
+                "findings": findings.strip(),
+                "conclusion": conclusion.strip(),
+                "recommendation": recommendation.strip()
+            })
+
+        prompt = build_batch_labeling_prompt(reports, diseases)
+
+        try:
+            batch_labels = call_gemini_batch(model, prompt)
+        except Exception as e:
+            print(f"⚠️ Batch failed ({start + 1}-{end}): {e}")
+            continue
+
+        # 🔥 Fill labels back into original dataframe
+        for i, labels in enumerate(batch_labels):
+            for disease in diseases:
+                df.at[start + i, disease] = labels.get(disease, "Normal")
+
+        time.sleep(1)
+
+    return df
+
+#main fn
+def main():
+    print("Initializing Gemini...")
+    model = init_gemini_model()
+    print(" LLM initialized")
+
+    input_file = get_excel_file_path(
+        "Enter path to INPUT Excel file: "
+    )
+    print(f" Using file: {input_file}")
+
+    labeled_df = label_reports_from_excel(
+        excel_path=input_file,
+        model=model,
+        diseases=DISEASES
+    )
+
+    output_path = input_file.parent / "llm_labels_output.xlsx"
+    labeled_df.to_excel(output_path, index=False)
+
+    print(f"\n✅ LLM labeling complete")
+    print(f"📄 Output saved to: {output_path}")
+
+
+if __name__ == "__main__":
+    main()
