@@ -247,8 +247,8 @@ def main():
     output_path = input_file.parent / "llm_labels_output.xlsx"
     labeled_df.to_excel(output_path, index=False)
 
-    print(f"\n✅ LLM labeling complete")
-    print(f"📄 Output saved to: {output_path}")
+    print(f"\n LLM labeling complete")
+    print(f" Output saved to: {output_path}")
 
       # Ask for gold standard file
     gold_file = get_excel_file_path(
@@ -264,7 +264,7 @@ def main():
     confusion_output = input_file.parent / "confusion_matrix_output.xlsx"
     confusion_df.to_excel(confusion_output, index=False)
 
-    print(f"\n📊 Confusion matrix saved to: {confusion_output}")
+    print(f"\n Confusion matrix saved to: {confusion_output}")
 
 
 if __name__ == "__main__":
