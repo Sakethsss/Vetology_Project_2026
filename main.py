@@ -7,6 +7,7 @@ import google.generativeai as genai
 from pathlib import Path
 from dotenv import load_dotenv
 import pandas as pd
+from sklearn.metrics import confusion_matrix
 
 BATCH_SIZE = 5  # safe starting point
 
@@ -186,8 +187,9 @@ def label_reports_from_excel(
     return df
 
 #Confusion matrix
+
 def generate_confusion_matrix(llm_file: Path, gold_file: Path, diseases):
-  
+
     llm_df = pd.read_excel(llm_file)
     gold_df = pd.read_excel(gold_file)
 
@@ -195,34 +197,22 @@ def generate_confusion_matrix(llm_file: Path, gold_file: Path, diseases):
 
     for disease in diseases:
 
-        if disease not in llm_df.columns or disease not in gold_df.columns:
-            print(f"⚠️ Skipping {disease} (column missing)")
-            continue
+        y_pred = llm_df[disease].map(lambda x: 1 if str(x).strip().lower() == "abnormal" else 0)
+        y_true = gold_df[disease].map(lambda x: 1 if str(x).strip().lower() == "abnormal" else 0)
 
-        # Convert labels to binary
-        llm_labels = llm_df[disease].astype(str).str.strip().str.lower()
-        gold_labels = gold_df[disease].astype(str).str.strip().str.lower()
+        tn, fp, fn, tp = confusion_matrix(y_true, y_pred).ravel()
 
-        llm_binary = llm_labels.map(lambda x: 1 if x == "abnormal" else 0)
-        gold_binary = gold_labels.map(lambda x: 1 if x == "abnormal" else 0)
-
-        TP = ((gold_binary == 1) & (llm_binary == 1)).sum()
-        TN = ((gold_binary == 0) & (llm_binary == 0)).sum()
-        FP = ((gold_binary == 0) & (llm_binary == 1)).sum()
-        FN = ((gold_binary == 1) & (llm_binary == 0)).sum()
-
-        sensitivity = TP / (TP + FN) if (TP + FN) > 0 else 0
-        specificity = TN / (TN + FP) if (TN + FP) > 0 else 0
+        sensitivity = tp / (tp + fn) if (tp + fn) else 0
+        specificity = tn / (tn + fp) if (tn + fp) else 0
 
         results.append({
             "Condition": disease,
-            "True Positive": TP,
-            "False Negative": FN,
-            "True Negative": TN,
-            "False Positive": FP,
+            "True Positive": tp,
+            "False Negative": fn,
+            "True Negative": tn,
+            "False Positive": fp,
             "Sensitivity": round(sensitivity * 100, 2),
             "Specificity": round(specificity * 100, 2),
-            "Total Cases": len(llm_df)
         })
 
     return pd.DataFrame(results)
