@@ -206,10 +206,11 @@ def generate_confusion_matrix(llm_file: Path, gold_file: Path, diseases):
         y_pred = llm_df[disease].map(lambda x: 1 if str(x).strip().lower() == "abnormal" else 0)
         y_true = gold_df[disease].map(lambda x: 1 if str(x).strip().lower() == "abnormal" else 0)
 
-        tn, fp, fn, tp = confusion_matrix(y_true, y_pred).ravel()
+        cm = confusion_matrix(y_true, y_pred, labels=[0, 1])
+        tn, fp, fn, tp = cm.ravel()
 
-        sensitivity = tp / (tp + fn) if (tp + fn) else 0
-        specificity = tn / (tn + fp) if (tn + fp) else 0
+        #sensitivity = tp / (tp + fn) if (tp + fn) else 0
+        #specificity = tn / (tn + fp) if (tn + fp) else 0
 
         results.append({
             "Condition": disease,
@@ -217,8 +218,8 @@ def generate_confusion_matrix(llm_file: Path, gold_file: Path, diseases):
             "False Negative": fn,
             "True Negative": tn,
             "False Positive": fp,
-            "Sensitivity": round(sensitivity * 100, 2),
-            "Specificity": round(specificity * 100, 2),
+            #"Sensitivity": round(sensitivity * 100, 2),
+            #"Specificity": round(specificity * 100, 2),
         })
 
     return pd.DataFrame(results)
@@ -260,6 +261,42 @@ def main():
     confusion_output = input_file.parent / "confusion_matrix_output.xlsx"
     confusion_df.to_excel(confusion_output, index=False)
 
+    wb = load_workbook(confusion_output)
+    ws = wb.active
+
+    ws["F1"] = "Sensitivity"
+    ws["G1"] = "Specificity"
+    ws["H1"] = "Total"
+    ws["I1"] = "Positive Ground Truth"
+    ws["J1"] = "Negative Ground Truth"
+    ws["K1"] = "Ground Truth Check"
+
+    for row in range(2, ws.max_row + 1):
+
+     # Sensitivity = TP / (TP + FN)
+     ws[f"F{row}"] = f"=IFERROR(B{row}/(B{row}+C{row}),0)"
+
+     # Specificity = TN / (TN + FP)
+     ws[f"G{row}"] = f"=IFERROR(D{row}/(D{row}+E{row}),0)"
+
+     # Total
+     ws[f"H{row}"] = f"=SUM(B{row}:E{row})"
+ 
+     # Positive Ground Truth
+     ws[f"I{row}"] = f"=B{row}+C{row}"
+
+     # Negative Ground Truth
+     ws[f"J{row}"] = f"=D{row}+E{row}"
+
+     # Ground Truth Check
+     ws[f"K{row}"] = f"=I{row}+J{row}"
+ 
+     # Format as percentage
+     ws[f"F{row}"].number_format = '0.00%'
+     ws[f"G{row}"].number_format = '0.00%'
+
+    wb.save(confusion_output)
+ 
     print(f"\n Confusion matrix saved to: {confusion_output}")
 
 
