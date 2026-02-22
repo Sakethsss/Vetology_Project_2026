@@ -46,28 +46,41 @@ def get_excel_file_path(prompt: str = "Enter path to Excel file: ") -> Path:
 
 #diseases
 DISEASES = [
-    "perihilar_infiltrate",
+    # Thorax
+    "pulmonary_nodules",
+    "esophagitis",
     "pneumonia",
     "bronchitis",
     "interstitial",
     "diseased_lungs",
     "hypo_plastic_trachea",
     "cardiomegaly",
-    "pulmonary_nodules",
     "pleural_effusion",
+    "perihilar_infiltrate",
     "rtm",
     "focal_caudodorsal_lung",
-    "focal_perihilar",
-    "pulmonary_hypoinflation",
     "right_sided_cardiomegaly",
-    "pericardial_effusion",
+    "focal_perihilar",
+    "left_sided_cardiomegaly",
     "bronchiectasis",
     "pulmonary_vessel_enlargement",
-    "left_sided_cardiomegaly",
     "thoracic_lymphadenopathy",
-    "esophagitis"
-]
+    "pulmonary_hypoinflation",
+    "pericardial_effusion",
+    "Fe_Alveolar",
 
+    # Abdomen
+    "gastritis",
+    "ascites",
+    "colitis",
+    "liver_mass",
+    "pancreatitis",
+    "microhepatia",
+    "small_intestinal_obstruction",
+    "splenic_mass",
+    "splenomegaly",
+    "hepatomegaly"
+]
 #Prompt
 def build_batch_labeling_prompt(reports, diseases):
     disease_list = "\n".join(f"- {d}" for d in diseases)
