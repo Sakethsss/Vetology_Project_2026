@@ -82,9 +82,6 @@ Findings:
 
 Conclusion:
 {rpt['conclusion'] or "No conclusion provided."}
-
-Recommendation:
-{rpt['recommendation'] or "No recommendation provided."}
 """)
 
     reports_text = "\n".join(report_blocks)
