@@ -8,13 +8,15 @@ from pathlib import Path
 from dotenv import load_dotenv
 import pandas as pd
 from sklearn.metrics import confusion_matrix
+from openai import OpenAI
+from openpyxl import load_workbook
+
+load_dotenv()
 
 BATCH_SIZE = 5  # safe starting point
 
 #gemini call
 def init_gemini_model(model_name: str = "gemini-2.5-flash-lite"):
-
-    load_dotenv()
 
     api_key = os.getenv("GEMINI_API_KEY")
     if not api_key:
@@ -150,6 +152,10 @@ def label_reports_from_excel(
     batch_size=BATCH_SIZE
 ):
     df = pd.read_excel(excel_path)
+
+    for disease in diseases:
+     if disease in df.columns:
+        df[disease] = df[disease].astype("object")
 
     print(f"\nLabeling {len(df)} reports in batches of {batch_size}...\n")
 
