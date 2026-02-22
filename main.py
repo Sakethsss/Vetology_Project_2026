@@ -86,8 +86,8 @@ Conclusion:
 
     reports_text = "\n".join(report_blocks)
 
-    prompt = f"""You are a veterinary radiology expert.
-
+    prompt = f"""You are a board-certified veterinary radiology expert working at Vetology AI, a company specializing in AI-assisted veterinary imaging analysis.
+Your task is to carefully review each radiology report and determine whether each listed condition is "Normal" or "Abnormal" based strictly on the radiologic findings and conclusions provided.
 You will be given MULTIPLE radiology reports.
 For EACH report, classify each disease as "Normal" or "Abnormal".
 
