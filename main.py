@@ -164,12 +164,10 @@ def label_reports_from_excel(
         for _, row in batch_df.iterrows():
             findings = "" if pd.isna(row["Findings (original radiologist report)"]) else str(row["Findings (original radiologist report)"])
             conclusion = "" if pd.isna(row["Conclusions (original radiologist report)"]) else str(row["Conclusions (original radiologist report)"])
-            recommendation = "" if pd.isna(row["Recommendations (original radiologist report)"]) else str(row["Recommendations (original radiologist report)"])
 
             reports.append({
                 "findings": findings.strip(),
                 "conclusion": conclusion.strip(),
-                "recommendation": recommendation.strip()
             })
 
         prompt = build_batch_labeling_prompt(reports, diseases)
@@ -185,7 +183,7 @@ def label_reports_from_excel(
             for disease in diseases:
                 df.at[start + i, disease] = labels.get(disease, "Normal")
 
-        time.sleep(2)
+        time.sleep(5)
 
     return df
 
