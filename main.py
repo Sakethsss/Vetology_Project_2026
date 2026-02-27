@@ -29,7 +29,7 @@ def init_gemini_model(model_name: str = "gemini-2.5-flash-lite"):
 
 #readfilepath CLi
 def get_excel_file_path(prompt: str = "Enter path to Excel file: ") -> Path:
-    
+
     while True:
         user_input = input(prompt).strip().strip('"').strip("'")
         path = Path(user_input)
@@ -46,41 +46,28 @@ def get_excel_file_path(prompt: str = "Enter path to Excel file: ") -> Path:
 
 #diseases
 DISEASES = [
-    # Thorax
-    "pulmonary_nodules",
-    "esophagitis",
+    "perihilar_infiltrate",
     "pneumonia",
     "bronchitis",
     "interstitial",
     "diseased_lungs",
     "hypo_plastic_trachea",
     "cardiomegaly",
+    "pulmonary_nodules",
     "pleural_effusion",
-    "perihilar_infiltrate",
     "rtm",
     "focal_caudodorsal_lung",
-    "right_sided_cardiomegaly",
     "focal_perihilar",
-    "left_sided_cardiomegaly",
+    "pulmonary_hypoinflation",
+    "right_sided_cardiomegaly",
+    "pericardial_effusion",
     "bronchiectasis",
     "pulmonary_vessel_enlargement",
+    "left_sided_cardiomegaly",
     "thoracic_lymphadenopathy",
-    "pulmonary_hypoinflation",
-    "pericardial_effusion",
-    "Fe_Alveolar",
-
-    # Abdomen
-    "gastritis",
-    "ascites",
-    "colitis",
-    "liver_mass",
-    "pancreatitis",
-    "microhepatia",
-    "small_intestinal_obstruction",
-    "splenic_mass",
-    "splenomegaly",
-    "hepatomegaly"
+    "esophagitis",
 ]
+
 #Prompt
 def build_batch_labeling_prompt(reports, diseases):
     disease_list = "\n".join(f"- {d}" for d in diseases)
@@ -99,8 +86,8 @@ Conclusion:
 
     reports_text = "\n".join(report_blocks)
 
-    prompt = f"""You are a board-certified veterinary radiology expert working at Vetology AI, a company specializing in AI-assisted veterinary imaging analysis.
-Your task is to carefully review each radiology report and determine whether each listed condition is "Normal" or "Abnormal" based strictly on the radiologic findings and conclusions provided.
+    prompt = f"""You are a board certified veterinary radiology expert working at Vetology AI.
+
 You will be given MULTIPLE radiology reports.
 For EACH report, classify each disease as "Normal" or "Abnormal".
 
@@ -193,12 +180,12 @@ def label_reports_from_excel(
             print(f"⚠️ Batch failed ({start + 1}-{end}): {e}")
             continue
 
-        # 🔥 Fill labels back into original dataframe
+        # Fill labels back into original dataframe
         for i, labels in enumerate(batch_labels):
             for disease in diseases:
                 df.at[start + i, disease] = labels.get(disease, "Normal")
 
-        time.sleep(1)
+        time.sleep(2)
 
     return df
 
@@ -291,7 +278,7 @@ def main():
 
      # Total
      ws[f"H{row}"] = f"=SUM(B{row}:E{row})"
- 
+
      # Positive Ground Truth
      ws[f"I{row}"] = f"=B{row}+C{row}"
 
@@ -300,13 +287,13 @@ def main():
 
      # Ground Truth Check
      ws[f"K{row}"] = f"=I{row}+J{row}"
- 
+
      # Format as percentage
      ws[f"F{row}"].number_format = '0.00%'
      ws[f"G{row}"].number_format = '0.00%'
 
     wb.save(confusion_output)
- 
+
     print(f"\n Confusion matrix saved to: {confusion_output}")
 
 
