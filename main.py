@@ -17,7 +17,7 @@ BATCH_SIZE = 5  # safe starting point
 
 #gemini call
 def init_gemini_model(model_name: str = "gemini-2.5-flash-lite"):
-
+ 
     api_key = os.getenv("GEMINI_API_KEY")
     if not api_key:
         raise RuntimeError(
@@ -44,29 +44,20 @@ def get_excel_file_path(prompt: str = "Enter path to Excel file: ") -> Path:
 
         return path
 
-#diseases
-DISEASES = [
-    "perihilar_infiltrate",
-    "pneumonia",
-    "bronchitis",
-    "interstitial",
-    "diseased_lungs",
-    "hypo_plastic_trachea",
-    "cardiomegaly",
-    "pulmonary_nodules",
-    "pleural_effusion",
-    "rtm",
-    "focal_caudodorsal_lung",
-    "focal_perihilar",
-    "pulmonary_hypoinflation",
-    "right_sided_cardiomegaly",
-    "pericardial_effusion",
-    "bronchiectasis",
-    "pulmonary_vessel_enlargement",
-    "left_sided_cardiomegaly",
-    "thoracic_lymphadenopathy",
-    "esophagitis",
-]
+#diseases extract
+NON_DISEASE_COLS = {
+    "caseid",
+    "findings (original radiologist report)",
+    "conclusions (original radiologist report)",
+    "recommendations (original radiologist report)",
+    "original radiologist",
+}
+
+def get_diseases_from_df(df):
+    return [
+        col for col in df.columns
+        if col.lower() not in NON_DISEASE_COLS
+    ]
 
 #Prompt
 def build_batch_labeling_prompt(reports, diseases):
@@ -145,10 +136,10 @@ def call_gemini_batch(model, prompt):
 def label_reports_from_excel(
     excel_path: Path,
     model,
-    diseases,
     batch_size=BATCH_SIZE
 ):
     df = pd.read_excel(excel_path)
+    diseases = get_diseases_from_df(df)
 
     for disease in diseases:
      if disease in df.columns:
@@ -233,7 +224,6 @@ def main():
     labeled_df = label_reports_from_excel(
         excel_path=input_file,
         model=model,
-        diseases=DISEASES
     )
 
     output_path = input_file.parent / "llm_labels_output.xlsx"
@@ -246,11 +236,12 @@ def main():
     gold_file = get_excel_file_path(
         "Enter path to GOLD STANDARD Excel file: "
     )
-
+    
+    diseases = get_diseases_from_df(labeled_df)
     confusion_df = generate_confusion_matrix(
         llm_file=output_path,
         gold_file=gold_file,
-        diseases=DISEASES
+        diseases=diseases
     )
 
     confusion_output = input_file.parent / "confusion_matrix_output.xlsx"
