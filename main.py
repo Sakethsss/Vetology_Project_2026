@@ -60,7 +60,13 @@ def get_diseases_from_df(df):
     ]
 
 #Prompt
-def build_batch_labeling_prompt(reports, diseases):
+
+def load_prompt_template():
+    with open("prompt.json", "r", encoding="utf-8") as f:
+        config = json.load(f)
+    return config["prompt_template"]
+
+def build_batch_labeling_prompt(reports, diseases, prompt_template):
     disease_list = "\n".join(f"- {d}" for d in diseases)
 
     report_blocks = []
@@ -76,42 +82,10 @@ Conclusion:
 """)
 
     reports_text = "\n".join(report_blocks)
-
-    prompt = f"""You are a board certified veterinary radiology expert working at Vetology AI.
-
-You will be given MULTIPLE radiology reports.
-For EACH report, classify each disease as "Normal" or "Abnormal".
-
-## Diseases to Evaluate:
-{disease_list}
-
-## Radiology Reports:
-{reports_text}
-
-## Instructions:
-1. For each disease/structure in the list above, determine if it is "Normal" or "Abnormal".
-2. "Abnormal" means the report indicates any pathology, disease, or abnormal finding related to that structure.
-3. "Normal" means the report indicates no abnormalities or the structure appears normal.
-4. If a disease is not mentioned, infer from the overall context. If truly not assessable, mark as "Normal".
-5. Return ONLY a valid JSON object with disease names as keys and "Normal" or "Abnormal" as values.
-
-## Output Format:
-Return a JSON ARRAY with one object per report, in the SAME ORDER:
-
-[
-  {{
-    "perihilar_infiltrate": "Normal",
-    "pneumonia": "Abnormal",
-    ...
-  }},
-  {{
-    ...
-  }}
-]
-
-NO markdown. NO explanations. ONLY raw JSON.
-"""
-
+    prompt = prompt_template.format(
+    disease_list=disease_list,
+    reports_text=reports_text
+)
     return prompt
 
 
@@ -136,6 +110,7 @@ def call_gemini_batch(model, prompt):
 def label_reports_from_excel(
     excel_path: Path,
     model,
+    prompt_template,
     batch_size=BATCH_SIZE
 ):
     df = pd.read_excel(excel_path)
@@ -161,7 +136,7 @@ def label_reports_from_excel(
                 "conclusion": conclusion.strip(),
             })
 
-        prompt = build_batch_labeling_prompt(reports, diseases)
+        prompt = build_batch_labeling_prompt(reports, diseases, prompt_template)
 
         try:
             batch_labels = call_gemini_batch(model, prompt)
@@ -174,7 +149,7 @@ def label_reports_from_excel(
             for disease in diseases:
                 df.at[start + i, disease] = labels.get(disease, "Normal")
 
-        time.sleep(5)
+        time.sleep(10)
 
     return df
 
@@ -215,7 +190,8 @@ def main():
     print("Initializing Gemini...")
     model = init_gemini_model()
     print(" LLM initialized")
-
+    prompt_template = load_prompt_template()
+    
     input_file = get_excel_file_path(
         "Enter path to INPUT Excel file: "
     )
@@ -224,6 +200,7 @@ def main():
     labeled_df = label_reports_from_excel(
         excel_path=input_file,
         model=model,
+        prompt_template=prompt_template
     )
 
     output_path = input_file.parent / "llm_labels_output.xlsx"
