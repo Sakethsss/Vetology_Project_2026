@@ -1,5 +1,3 @@
-import argparse
-import sys
 import os
 import json
 import time
@@ -8,7 +6,6 @@ from pathlib import Path
 from dotenv import load_dotenv
 import pandas as pd
 from sklearn.metrics import confusion_matrix
-from openai import OpenAI
 from openpyxl import load_workbook
 from openai import OpenAI
 load_dotenv()
@@ -65,11 +62,30 @@ def get_diseases_from_df(df):
     ]
 
 #Prompt
-
 def load_prompt_template():
     with open("prompt.json", "r", encoding="utf-8") as f:
         config = json.load(f)
-    return config["prompt_template"]
+
+    prompt = f"""
+{config["role"]}
+
+Task:
+{config["task"]}
+
+## Diseases to Evaluate:
+{{disease_list}}
+
+## Radiology Reports:
+{{reports_text}}
+
+Instructions:
+{chr(10).join(config["instructions"])}
+
+Output Requirements:
+{chr(10).join(config["output_requirements"])}
+"""
+
+    return prompt
 
 def build_batch_labeling_prompt(reports, diseases, prompt_template):
     disease_list = "\n".join(f"- {d}" for d in diseases)
@@ -94,7 +110,7 @@ Conclusion:
     return prompt
 
 
-#gemini call
+#llm call
 def call_llm_batch(model, prompt):
     client = model["client"]
     model_name = model["model"]
@@ -161,7 +177,6 @@ def label_reports_from_excel(
     return df
 
 #Confusion matrix
-
 def generate_confusion_matrix(llm_file: Path, gold_file: Path, diseases):
 
     llm_df = pd.read_excel(llm_file)
@@ -177,17 +192,12 @@ def generate_confusion_matrix(llm_file: Path, gold_file: Path, diseases):
         cm = confusion_matrix(y_true, y_pred, labels=[0, 1])
         tn, fp, fn, tp = cm.ravel()
 
-        #sensitivity = tp / (tp + fn) if (tp + fn) else 0
-        #specificity = tn / (tn + fp) if (tn + fp) else 0
-
         results.append({
             "Condition": disease,
             "True Positive": tp,
             "False Negative": fn,
             "True Negative": tn,
             "False Positive": fp,
-            #"Sensitivity": round(sensitivity * 100, 2),
-            #"Specificity": round(specificity * 100, 2),
         })
 
     return pd.DataFrame(results)

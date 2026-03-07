@@ -1,3 +1,32 @@
 {
-  "prompt_template": "You are a board certified veterinary radiology expert working at Vetology AI.\n\nYou will be given MULTIPLE radiology reports.\nFor EACH report, classify each disease as \"Normal\" or \"Abnormal\".\n\n## Diseases to Evaluate:\n{disease_list}\n\n## Radiology Reports:\n{reports_text}\n\n## Instructions:\n1. For each disease determine if it is \"Normal\" or \"Abnormal\".\n2. \"Abnormal\" means the report indicates pathology.\n3. \"Normal\" means no abnormality.\n\n## Output Format:\nReturn a JSON ARRAY with one object per report.\n\n[\n  {{\n    \"perihilar_infiltrate\": \"Normal\",\n    \"pneumonia\": \"Abnormal\"\n  }},\n  {{\n    \"...\": \"...\"\n  }}\n]\n\nNO markdown. ONLY JSON."
+  "role": "You are a board certified veterinary radiology expert working at Vetology AI.",
+  "task": "You will be given multiple radiology reports and must classify diseases for each report.",
+  "classification_labels": {
+    "Normal": "No abnormality present in the report",
+    "Abnormal": "The report indicates pathology"
+  },
+  "input_sections": {
+    "diseases_to_evaluate": "{disease_list}",
+    "radiology_reports": "{reports_text}"
+  },
+  "instructions": [
+    "For each report classify every disease as either Normal or Abnormal.",
+    "Abnormal means the report indicates pathology related to the disease.",
+    "Normal means the report indicates no abnormality."
+  ],
+  "output_requirements": [
+    "Return a JSON array with one object per report.",
+    "Each object must contain all diseases with labels Normal or Abnormal.",
+    "Do not include markdown.",
+    "Return only valid JSON."
+  ],
+  "output_format_example": [
+    {
+      "perihilar_infiltrate": "Normal",
+      "pneumonia": "Abnormal"
+    },
+    {
+      "...": "..."
+    }
+  ]
 }
