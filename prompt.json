@@ -12,12 +12,14 @@
   "instructions": [
     "For each report classify every disease as either Normal or Abnormal.",
     "Abnormal means the report indicates pathology related to the disease.",
-    "Normal means the report indicates no abnormality."
+    "Normal means the report indicates no abnormality.",
+    "Use both Findings and Conclusion when determining the label.",
+    "Only classify the diseases listed in Diseases to Evaluate."
   ],
   "output_requirements": [
     "Return a JSON array with one object per report.",
     "Each object must contain all diseases with labels Normal or Abnormal.",
-    "Do not include markdown.",
+    "NO markdown. NO explanations. ONLY raw JSON.",
     "Return only valid JSON."
   ],
   "output_format_example": [
