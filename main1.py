@@ -250,6 +250,7 @@ def main():
     ws["I1"] = "Positive Ground Truth"
     ws["J1"] = "Negative Ground Truth"
     ws["K1"] = "Ground Truth Check"
+    ws["L1"] = "F1 Score"
 
     for row in range(2, ws.max_row + 1):
 
@@ -271,9 +272,13 @@ def main():
      # Ground Truth Check
      ws[f"K{row}"] = f"=I{row}+J{row}"
 
+     # F1 Score = 2 * (Precision * Recall) / (Precision + Recall)
+     ws[f"L{row}"] = f"=IFERROR(2*(F{row}*G{row})/(F{row}+G{row}),0)"
+
      # Format as percentage
      ws[f"F{row}"].number_format = '0.00%'
      ws[f"G{row}"].number_format = '0.00%'
+     ws[f"L{row}"].number_format = '0.00%'
 
     wb.save(confusion_output)
 
